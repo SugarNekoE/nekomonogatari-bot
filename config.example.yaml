@@ -1,0 +1,29 @@
+language: en
+
+telegram:
+  token: BOT_TOKEN_FROM_BOTFATHER
+  username: NekoRegisterBot
+  allowed-groups:
+    - -1001234567890
+
+database:
+  path: data/nekomonogatari.db
+
+plugins:
+  asnk-forge:
+    enabled: false
+    listen-address: 127.0.0.1:8080
+    public-url: https://register.example.com
+    forgejo-url: https://forge.example.com
+    forgejo-api-token: CHANGE_ME
+    allow-insecure-forgejo: false
+    pending-ttl: 15m
+    session-ttl: 15m
+    telegram-auth-max-age: 5m
+    http-timeout: 10s
+
+  mc-whitelist:
+    enabled: false
+    address: 127.0.0.1:25575
+    password: CHANGE_ME
+    timeout: 5s

@@ -1,0 +1,19 @@
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+config.yaml
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+
+plugin/asnk-forge/web/node_modules/
