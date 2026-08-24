@@ -1,11 +1,12 @@
 # nekomonogatari-bot
 
-A small, plugin-based Telegram group bot with two optional integrations:
+A small, plugin-based Telegram group bot with three optional integrations:
 
 - `asnk-forge`: authorizes a Telegram group member in a short-lived web flow and creates that member's Forgejo account through the administrator API.
 - `mc-whitelist`: lets each Telegram account manage up to two Minecraft Java Edition whitelist names through RCON.
+- `system-status`: reports the bot host's operating system, hardware, utilization, load, storage, virtualization, and Go runtime.
 
-The bot uses GORM with the pure-Go `github.com/glebarez/sqlite` dialector, so it builds with `CGO_ENABLED=0`. Every plugin shares one database connection while owning its quoted, plugin-prefixed tables (for example, `"mc-whitelist_players"`).
+The bot uses GORM with the pure-Go `github.com/glebarez/sqlite` dialector, so it builds with `CGO_ENABLED=0`. Plugins that persist data share one database connection while owning their quoted, plugin-prefixed tables (for example, `"mc-whitelist_players"`).
 
 ## Configuration
 
@@ -26,9 +27,13 @@ PLUGINS_ASNK_FORGE_ENABLED
 PLUGINS_ASNK_FORGE_FORGEJO_API_TOKEN
 PLUGINS_MC_WHITELIST_ENABLED
 PLUGINS_MC_WHITELIST_PASSWORD
+PLUGINS_SYSTEM_STATUS_ENABLED
+PLUGINS_SYSTEM_STATUS_DISK_PATH
+PLUGINS_SYSTEM_STATUS_SHOW_HOSTNAME
+PLUGINS_SYSTEM_STATUS_TIMEOUT
 ```
 
-The global `language` setting accepts `en` or `zh` and controls both plugins, including the Forge registration site.
+The global `language` setting accepts `en` or `zh` and controls all plugins, including the Forge registration site.
 
 Each plugin has its own `enabled` switch. Disabled plugins do not migrate their schema, register handlers, or start services.
 
@@ -66,6 +71,12 @@ Available commands in an allowed group:
 ```
 
 Player names must be 3–16 ASCII letters, digits, or underscores. Bindings are keyed by immutable Telegram numeric account ID, compared case-insensitively, and limited to two by SQLite as well as application checks.
+
+## System status
+
+Enable `plugins.system-status` to provide `/status` in allowed groups. The response includes the operating system and kernel, architecture, host uptime, CPU model and topology, CPU utilization, load averages, memory, the configured filesystem usage, virtualization details when available, and the bot's Go runtime.
+
+`disk-path` selects the filesystem to report. `show-hostname` is disabled by default to avoid publishing the server hostname into a group chat. Collection is bounded by `timeout`; individual unavailable metrics are omitted while the remaining status is still returned. Network addresses, environment variables, process arguments, and secrets are never included.
 
 ## Development checks
 

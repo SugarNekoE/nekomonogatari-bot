@@ -35,6 +35,11 @@ plugins:
     address: 127.0.0.1:25575
     password: rcon-secret
     timeout: 2s
+  system-status:
+    enabled: true
+    disk-path: /srv
+    show-hostname: true
+    timeout: 1500ms
 `
 	if err := os.WriteFile(configFile, []byte(contents), 0o600); err != nil {
 		t.Fatal(err)
@@ -56,6 +61,9 @@ plugins:
 	}
 	if got.Plugins.MCWhitelist.Timeout != 2*time.Second {
 		t.Errorf("MC timeout = %s", got.Plugins.MCWhitelist.Timeout)
+	}
+	if got.Plugins.SystemStatus.DiskPath != "/srv" || !got.Plugins.SystemStatus.ShowHostname || got.Plugins.SystemStatus.Timeout != 1500*time.Millisecond {
+		t.Errorf("System status config = %#v", got.Plugins.SystemStatus)
 	}
 }
 
@@ -123,5 +131,30 @@ func TestValidateRequiresForgejoHTTPSOptIn(t *testing.T) {
 	cfg.Plugins.AsnkForge.AllowInsecureForgejo = true
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() with opt-in error = %v", err)
+	}
+}
+
+func TestValidateSystemStatus(t *testing.T) {
+	cfg := Config{
+		Language: LanguageEnglish,
+		Telegram: TelegramConfig{Token: "123456:test-token", Username: "NekoRegisterBot"},
+		Database: DatabaseConfig{Path: "test.db"},
+		Plugins: PluginsConfig{SystemStatus: SystemStatusConfig{
+			Enabled:  true,
+			DiskPath: "/",
+			Timeout:  time.Second,
+		}},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("valid system status config: %v", err)
+	}
+	cfg.Plugins.SystemStatus.DiskPath = ""
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "disk-path") {
+		t.Fatalf("empty disk path error = %v", err)
+	}
+	cfg.Plugins.SystemStatus.DiskPath = "/"
+	cfg.Plugins.SystemStatus.Timeout = 499 * time.Millisecond
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "500ms") {
+		t.Fatalf("short timeout error = %v", err)
 	}
 }

@@ -75,6 +75,10 @@ func bindEnvironment(v *viper.Viper) error {
 		"plugins.mc-whitelist.address",
 		"plugins.mc-whitelist.password",
 		"plugins.mc-whitelist.timeout",
+		"plugins.system-status.enabled",
+		"plugins.system-status.disk-path",
+		"plugins.system-status.show-hostname",
+		"plugins.system-status.timeout",
 	}
 	for _, key := range keys {
 		if err := v.BindEnv(key); err != nil {
@@ -106,6 +110,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("plugins.mc-whitelist.address", "127.0.0.1:25575")
 	v.SetDefault("plugins.mc-whitelist.password", "")
 	v.SetDefault("plugins.mc-whitelist.timeout", 5*time.Second)
+
+	v.SetDefault("plugins.system-status.enabled", false)
+	v.SetDefault("plugins.system-status.disk-path", "/")
+	v.SetDefault("plugins.system-status.show-hostname", false)
+	v.SetDefault("plugins.system-status.timeout", 3*time.Second)
 }
 
 func (c *Config) Validate() error {
@@ -121,7 +130,7 @@ func (c *Config) Validate() error {
 	if hasDuplicates(c.Telegram.AllowedGroups) {
 		return errors.New("telegram.allowed-groups must not contain duplicate chat IDs")
 	}
-	if c.Plugins.AsnkForge.Enabled || c.Plugins.MCWhitelist.Enabled {
+	if c.Plugins.AsnkForge.Enabled || c.Plugins.MCWhitelist.Enabled || c.Plugins.SystemStatus.Enabled {
 		if !telegramUsernamePattern.MatchString(c.Telegram.Username) {
 			return errors.New("telegram.username must be the bot username without @")
 		}
@@ -137,6 +146,11 @@ func (c *Config) Validate() error {
 	if c.Plugins.MCWhitelist.Enabled {
 		if err := c.validateMCWhitelist(); err != nil {
 			return fmt.Errorf("plugins.mc-whitelist: %w", err)
+		}
+	}
+	if c.Plugins.SystemStatus.Enabled {
+		if err := c.validateSystemStatus(); err != nil {
+			return fmt.Errorf("plugins.system-status: %w", err)
 		}
 	}
 	return nil
@@ -186,6 +200,17 @@ func (c *Config) validateMCWhitelist() error {
 	}
 	if p.Timeout <= 0 {
 		return errors.New("timeout must be greater than zero")
+	}
+	return nil
+}
+
+func (c *Config) validateSystemStatus() error {
+	p := c.Plugins.SystemStatus
+	if strings.TrimSpace(p.DiskPath) == "" {
+		return errors.New("disk-path must not be empty")
+	}
+	if p.Timeout < 500*time.Millisecond {
+		return errors.New("timeout must be at least 500ms")
 	}
 	return nil
 }

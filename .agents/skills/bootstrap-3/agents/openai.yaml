@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Bootstrap 3'
+  short_description: 'Build repo-native Bootstrap 3.4 interfaces'
+  default_prompt: 'Use $bootstrap-3 to build a Bootstrap 3.4 interface that follows this repository’s SvelteKit conventions.'

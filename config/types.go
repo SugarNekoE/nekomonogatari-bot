@@ -27,8 +27,9 @@ type DatabaseConfig struct {
 }
 
 type PluginsConfig struct {
-	AsnkForge   AsnkForgeConfig   `mapstructure:"asnk-forge" yaml:"asnk-forge"`
-	MCWhitelist MCWhitelistConfig `mapstructure:"mc-whitelist" yaml:"mc-whitelist"`
+	AsnkForge    AsnkForgeConfig    `mapstructure:"asnk-forge" yaml:"asnk-forge"`
+	MCWhitelist  MCWhitelistConfig  `mapstructure:"mc-whitelist" yaml:"mc-whitelist"`
+	SystemStatus SystemStatusConfig `mapstructure:"system-status" yaml:"system-status"`
 }
 
 type AsnkForgeConfig struct {
@@ -49,4 +50,11 @@ type MCWhitelistConfig struct {
 	Address  string        `mapstructure:"address" yaml:"address"`
 	Password string        `mapstructure:"password" yaml:"password"`
 	Timeout  time.Duration `mapstructure:"timeout" yaml:"timeout"`
+}
+
+type SystemStatusConfig struct {
+	Enabled      bool          `mapstructure:"enabled" yaml:"enabled"`
+	DiskPath     string        `mapstructure:"disk-path" yaml:"disk-path"`
+	ShowHostname bool          `mapstructure:"show-hostname" yaml:"show-hostname"`
+	Timeout      time.Duration `mapstructure:"timeout" yaml:"timeout"`
 }

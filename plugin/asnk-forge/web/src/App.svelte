@@ -39,6 +39,26 @@
 
   type TelegramUser = Record<string, string | number | boolean | undefined>;
   type Phase = 'loading' | 'login' | 'form' | 'success' | 'fatal';
+  type ThemePreference = 'auto' | 'light' | 'dark';
+
+  const themeCopyByLanguage = {
+    en: {
+      group: 'Page appearance',
+      auto: 'Auto',
+      light: 'Light',
+      dark: 'Dark',
+      current: 'Current appearance',
+      source: 'Source code'
+    },
+    zh: {
+      group: '页面配色',
+      auto: '自动',
+      light: '浅色',
+      dark: '深色',
+      current: '当前配色',
+      source: '源代码'
+    }
+  } as const;
 
   let config: WebConfig | null = null;
   let phase: Phase = 'loading';
@@ -51,18 +71,51 @@
   let createdUsername = '';
   let errorMessage = '';
   let submitting = false;
+  let themePreference: ThemePreference = 'auto';
+  let themeCopy: typeof themeCopyByLanguage.en | typeof themeCopyByLanguage.zh = themeCopyByLanguage.en;
   const usernamePattern = '[A-Za-z0-9](?:[A-Za-z0-9._-]{0,38}[A-Za-z0-9])?';
+
+  $: themeCopy = config?.language.toLowerCase().startsWith('zh')
+    ? themeCopyByLanguage.zh
+    : themeCopyByLanguage.en;
 
   const telegramWindow = window as typeof window & {
     onTelegramAuth?: (user: TelegramUser) => void;
   };
 
   onMount(() => {
+    const initialTheme = document.documentElement.dataset.themePreference;
+    if (initialTheme === 'auto' || initialTheme === 'light' || initialTheme === 'dark') {
+      themePreference = initialTheme;
+    }
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleColorSchemeChange = () => {
+      if (themePreference === 'auto') applyTheme();
+    };
+    colorScheme.addEventListener('change', handleColorSchemeChange);
     void initialize();
     return () => {
+      colorScheme.removeEventListener('change', handleColorSchemeChange);
       delete telegramWindow.onTelegramAuth;
     };
   });
+
+  function applyTheme() {
+    const resolved = themePreference === 'auto'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      : themePreference;
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.dataset.themePreference = themePreference;
+    document.documentElement.style.colorScheme = resolved;
+  }
+
+  function setTheme(preference: ThemePreference) {
+    themePreference = preference;
+    try {
+      localStorage.setItem('asnk-forge-theme', preference);
+    } catch {}
+    applyTheme();
+  }
 
   async function initialize() {
     try {
@@ -107,7 +160,7 @@
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
     script.setAttribute('data-telegram-login', config.botUsername);
     script.setAttribute('data-size', 'large');
-    script.setAttribute('data-radius', '10');
+    script.setAttribute('data-radius', '4');
     script.setAttribute('data-lang', config.language);
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     container.appendChild(script);
@@ -186,62 +239,163 @@
   <meta name="description" content={config?.messages.subtitle ?? 'Forgejo account registration'} />
 </svelte:head>
 
-<main>
-  <section class="card" aria-live="polite">
-    <div class="mark" aria-hidden="true">⌘</div>
-    {#if config}
-      <header>
-        <p class="eyebrow">ASNK FORGE</p>
-        <h1>{config.messages.title}</h1>
-        <p class="subtitle">{config.messages.subtitle}</p>
-      </header>
-    {/if}
+<main class="registration-page">
+  <div class="container registration-content">
+    <div class="row">
+      <div class="col-xs-12 col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
+        <header class="page-toolbar clearfix">
+          <a class="forge-brand pull-left" href="https://forge.asnk.io/" target="_blank" rel="noreferrer">
+            <img src="/forge/forgejo.svg" alt="" width="28" height="28" />
+            <span>Asnk Forge</span>
+          </a>
+          <div class="btn-group btn-group-sm pull-right" role="group" aria-label={themeCopy.group}>
+            <button
+              type="button"
+              class="btn btn-default"
+              class:active={themePreference === 'auto'}
+              aria-pressed={themePreference === 'auto'}
+              on:click={() => setTheme('auto')}
+            >
+              {themeCopy.auto}
+            </button>
+            <button
+              type="button"
+              class="btn btn-default"
+              class:active={themePreference === 'light'}
+              aria-pressed={themePreference === 'light'}
+              on:click={() => setTheme('light')}
+            >
+              {themeCopy.light}
+            </button>
+            <button
+              type="button"
+              class="btn btn-default"
+              class:active={themePreference === 'dark'}
+              aria-pressed={themePreference === 'dark'}
+              on:click={() => setTheme('dark')}
+            >
+              {themeCopy.dark}
+            </button>
+            <span class="sr-only" aria-live="polite">{themeCopy.current}: {themeCopy[themePreference]}</span>
+          </div>
+        </header>
 
-    {#if phase === 'loading'}
-      <div class="status"><span class="spinner"></span>{config?.messages.loading ?? 'Loading…'}</div>
-    {:else if phase === 'fatal'}
-      <div class="notice error">Unable to load the registration service.</div>
-    {:else if phase === 'login' && config}
-      <div class="panel">
-        <h2>{config.messages.loginHeading}</h2>
-        <p>{config.messages.loginInstructions}</p>
-        {#if errorMessage}<div class="notice error">{errorMessage}</div>{/if}
-        <div id="telegram-login" class="telegram-login"></div>
+        <section class="panel panel-default registration-panel" aria-live="polite">
+          {#if config}
+            <div class="panel-heading">
+              <h1 class="panel-title">{config.messages.title}</h1>
+            </div>
+          {/if}
+          <div class="panel-body">
+            {#if phase === 'loading'}
+              <p class="loading-state text-muted">
+                <span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span>
+                {config?.messages.loading ?? 'Loading…'}
+              </p>
+            {:else if phase === 'fatal'}
+              <div class="alert alert-danger" role="alert">Unable to load the registration service.</div>
+            {:else if phase === 'login' && config}
+              <h2 class="section-title">{config.messages.loginHeading}</h2>
+              <p class="text-muted">{config.messages.loginInstructions}</p>
+              {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
+              <div id="telegram-login" class="telegram-login"></div>
+            {:else if phase === 'form' && config}
+              <h2 class="section-title">{config.messages.formHeading}</h2>
+              <div class="alert alert-info identity">
+                {config.messages.authenticatedAs} <strong>{displayName}</strong>
+              </div>
+              {#if errorMessage}<div class="alert alert-danger" role="alert">{errorMessage}</div>{/if}
+              <form on:submit|preventDefault={submitRegistration}>
+                <div class="form-group">
+                  <label class="control-label" for="forgejo-username">{config.messages.username}</label>
+                  <input
+                    id="forgejo-username"
+                    class="form-control"
+                    bind:value={username}
+                    name="username"
+                    autocomplete="username"
+                    minlength="1"
+                    maxlength="40"
+                    pattern={usernamePattern}
+                    aria-describedby="forgejo-username-help"
+                    required
+                  />
+                  <span id="forgejo-username-help" class="help-block">{config.messages.usernameHint}</span>
+                </div>
+                <div class="form-group">
+                  <label class="control-label" for="forgejo-email">{config.messages.email}</label>
+                  <input
+                    id="forgejo-email"
+                    class="form-control"
+                    bind:value={email}
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    maxlength="254"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label class="control-label" for="forgejo-password">{config.messages.password}</label>
+                  <input
+                    id="forgejo-password"
+                    class="form-control"
+                    bind:value={password}
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="8"
+                    maxlength="256"
+                    aria-describedby="forgejo-password-help"
+                    required
+                  />
+                  <span id="forgejo-password-help" class="help-block">{config.messages.passwordHint}</span>
+                </div>
+                <div class="form-group">
+                  <label class="control-label" for="forgejo-password-confirmation">{config.messages.confirmPassword}</label>
+                  <input
+                    id="forgejo-password-confirmation"
+                    class="form-control"
+                    bind:value={confirmation}
+                    name="confirmation"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="8"
+                    maxlength="256"
+                    required
+                  />
+                </div>
+                <p class="help-block password-notice">{config.messages.neverSharePassword}</p>
+                <button class="btn btn-primary" type="submit" disabled={submitting}>
+                  {submitting ? config.messages.submitting : config.messages.submit}
+                </button>
+              </form>
+            {:else if phase === 'success' && config}
+              <div class="alert alert-success success-state">
+                <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+                <h2 class="section-title">{config.messages.success}</h2>
+                <strong class="created-name">{createdUsername}</strong>
+              </div>
+            {/if}
+          </div>
+        </section>
       </div>
-    {:else if phase === 'form' && config}
-      <div class="panel">
-        <h2>{config.messages.formHeading}</h2>
-        <p class="identity"><span>{config.messages.authenticatedAs}</span> <strong>{displayName}</strong></p>
-        {#if errorMessage}<div class="notice error">{errorMessage}</div>{/if}
-        <form on:submit|preventDefault={submitRegistration}>
-          <label>
-            <span>{config.messages.username}</span>
-            <input bind:value={username} name="username" autocomplete="username" minlength="1" maxlength="40" pattern={usernamePattern} required />
-            <small>{config.messages.usernameHint}</small>
-          </label>
-          <label>
-            <span>{config.messages.email}</span>
-            <input bind:value={email} name="email" type="email" autocomplete="email" maxlength="254" required />
-          </label>
-          <label>
-            <span>{config.messages.password}</span>
-            <input bind:value={password} name="password" type="password" autocomplete="new-password" minlength="8" maxlength="256" required />
-            <small>{config.messages.passwordHint}</small>
-          </label>
-          <label>
-            <span>{config.messages.confirmPassword}</span>
-            <input bind:value={confirmation} name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="256" required />
-          </label>
-          <p class="privacy">{config.messages.neverSharePassword}</p>
-          <button type="submit" disabled={submitting}>{submitting ? config.messages.submitting : config.messages.submit}</button>
-        </form>
-      </div>
-    {:else if phase === 'success' && config}
-      <div class="panel success-panel">
-        <div class="success-icon" aria-hidden="true">✓</div>
-        <h2>{config.messages.success}</h2>
-        <p class="created-name">{createdUsername}</p>
-      </div>
-    {/if}
-  </section>
+    </div>
+  </div>
+  <footer class="page-footer">
+    <div class="container">
+      <ul class="list-inline">
+        <li>
+          <a href="https://forge.asnk.io/sugar/nekomonogatari-bot" target="_blank" rel="noreferrer">
+            {themeCopy.source}
+          </a>
+        </li>
+        <li>
+          <a href="https://forge.asnk.io/sugar/nekomonogatari-bot/src/branch/main/LICENSE" target="_blank" rel="noreferrer">
+            AGPL-3.0-only
+          </a>
+        </li>
+      </ul>
+    </div>
+  </footer>
 </main>

@@ -27,3 +27,9 @@ plugins:
     address: 127.0.0.1:25575
     password: CHANGE_ME
     timeout: 5s
+
+  system-status:
+    enabled: false
+    disk-path: /
+    show-hostname: false
+    timeout: 3s
