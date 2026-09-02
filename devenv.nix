@@ -1,6 +1,12 @@
 { pkgs, ... }:
 
 {
+  packages = with pkgs; [
+    yaml-language-server
+    package-version-server
+    vscode-json-languageserver
+  ];
+
   languages = {
     go = {
       enable = true;
