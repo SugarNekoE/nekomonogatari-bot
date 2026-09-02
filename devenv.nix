@@ -10,7 +10,7 @@
   languages = {
     go = {
       enable = true;
-      version = "1.26.0";
+      version = "1.26.6";
     };
     javascript = {
       enable = true;

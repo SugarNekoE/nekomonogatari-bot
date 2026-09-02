@@ -17,20 +17,27 @@ const placeholderToken = "BOT_TOKEN_FROM_BOTFATHER"
 
 var telegramUsernamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{4,31}$`)
 
-func ConfigDir() string {
-	if dir := strings.TrimSpace(os.Getenv("CONFIG_PATH")); dir != "" {
-		return dir
-	}
-	return "."
-}
-
 func Load() (*Config, error) {
 	v := viper.New()
-	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath(ConfigDir())
+	if configPath := strings.TrimSpace(os.Getenv("CONFIG_PATH")); configPath != "" {
+		info, err := os.Stat(configPath)
+		switch {
+		case err == nil && info.IsDir():
+			v.SetConfigName("config")
+			v.AddConfigPath(configPath)
+		case err == nil:
+			v.SetConfigFile(configPath)
+		case errors.Is(err, os.ErrNotExist):
+			v.SetConfigFile(configPath)
+		default:
+			return nil, fmt.Errorf("inspect config path: %w", err)
+		}
+	} else {
+		v.SetConfigName("config")
+		v.AddConfigPath(".")
+	}
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
-	v.AutomaticEnv()
 	setDefaults(v)
 
 	if err := bindEnvironment(v); err != nil {
@@ -81,7 +88,15 @@ func bindEnvironment(v *viper.Viper) error {
 		"plugins.system-status.timeout",
 	}
 	for _, key := range keys {
-		if err := v.BindEnv(key); err != nil {
+		var err error
+		if key == "language" {
+			// LANGUAGE is commonly set by the operating system for locale
+			// selection, so do not accidentally interpret it as bot config.
+			err = v.BindEnv(key, "NEKOMONOGATARI_LANGUAGE")
+		} else {
+			err = v.BindEnv(key)
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -165,6 +180,9 @@ func (c *Config) validateAsnkForge() error {
 	if err != nil || publicURL.Host == "" || (publicURL.Scheme != "http" && publicURL.Scheme != "https") {
 		return errors.New("public-url must be an absolute HTTP(S) URL")
 	}
+	if publicURL.User != nil {
+		return errors.New("public-url must not contain user information")
+	}
 	if publicURL.RawQuery != "" || publicURL.Fragment != "" || (publicURL.Path != "" && publicURL.Path != "/") {
 		return errors.New("public-url must not contain a path, query, or fragment")
 	}
@@ -174,6 +192,9 @@ func (c *Config) validateAsnkForge() error {
 	forgejoURL, err := url.Parse(p.ForgejoURL)
 	if err != nil || forgejoURL.Host == "" || (forgejoURL.Scheme != "http" && forgejoURL.Scheme != "https") {
 		return errors.New("forgejo-url must be an absolute HTTP(S) URL")
+	}
+	if forgejoURL.User != nil {
+		return errors.New("forgejo-url must not contain user information")
 	}
 	if forgejoURL.RawQuery != "" || forgejoURL.Fragment != "" {
 		return errors.New("forgejo-url must not contain a query or fragment")

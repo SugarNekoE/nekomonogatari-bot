@@ -57,6 +57,9 @@ func newHTTPForgejoClient(rawURL, token string, timeout time.Duration) (*httpFor
 	if base.Scheme != "http" && base.Scheme != "https" {
 		return nil, errors.New("forgejo URL must use HTTP or HTTPS")
 	}
+	if base.User != nil {
+		return nil, errors.New("forgejo URL must not contain user information")
+	}
 	if strings.TrimSpace(token) == "" {
 		return nil, errors.New("forgejo API token is required")
 	}
@@ -118,7 +121,7 @@ func (c *httpForgejoClient) CreateUser(ctx context.Context, input forgejoCreateU
 		return forgejoUser{}, fmt.Errorf("decode Forgejo user: %w", err)
 	}
 	if result.ID <= 0 {
-		return forgejoUser{}, errors.New("Forgejo returned a user without an ID")
+		return forgejoUser{}, errors.New("forgejo returned a user without an ID")
 	}
 	if result.Username == "" {
 		result.Username = input.Username
@@ -147,7 +150,7 @@ func (c *httpForgejoClient) LookupUser(ctx context.Context, username string) (fo
 		return forgejoUser{}, fmt.Errorf("decode Forgejo lookup user: %w", err)
 	}
 	if result.ID <= 0 || result.Username == "" {
-		return forgejoUser{}, errors.New("Forgejo lookup returned an invalid user")
+		return forgejoUser{}, errors.New("forgejo lookup returned an invalid user")
 	}
 	return result, nil
 }

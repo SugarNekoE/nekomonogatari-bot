@@ -53,6 +53,12 @@ func TestHTTPForgejoClientCreatesUser(t *testing.T) {
 	}
 }
 
+func TestHTTPForgejoClientRejectsURLUserInfo(t *testing.T) {
+	if _, err := newHTTPForgejoClient("https://user:password@forge.example", "admin-secret", time.Second); err == nil {
+		t.Fatal("newHTTPForgejoClient() accepted URL user information")
+	}
+}
+
 func TestHTTPForgejoClientReturnsTypedRejection(t *testing.T) {
 	client, err := newHTTPForgejoClient("https://forge.example", "admin-secret", time.Second)
 	if err != nil {

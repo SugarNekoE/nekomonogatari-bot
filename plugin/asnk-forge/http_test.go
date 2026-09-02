@@ -166,6 +166,19 @@ func TestHTTPRecoversIndeterminateForgejoCreate(t *testing.T) {
 	}
 }
 
+func TestValidOriginUsesCaseInsensitiveSchemeAndHost(t *testing.T) {
+	p := &implementation{origin: "https://Register.Example"}
+	request := httptest.NewRequest(http.MethodPost, "https://register.example/forge/api/register", nil)
+	request.Header.Set("Origin", "HTTPS://register.example")
+	if !p.validOrigin(request) {
+		t.Fatal("validOrigin() rejected an equivalent origin")
+	}
+	request.Header.Set("Origin", "https://other.example")
+	if p.validOrigin(request) {
+		t.Fatal("validOrigin() accepted a different origin")
+	}
+}
+
 func TestEmbeddedWebAndSecurityHeaders(t *testing.T) {
 	p, _, _ := testImplementation(t, config.LanguageEnglish)
 	request := httptest.NewRequest(http.MethodGet, "https://register.example/forge/", nil)

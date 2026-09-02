@@ -17,9 +17,10 @@ cp config.example.yaml config.yaml
 go run .
 ```
 
-`CONFIG_PATH` can point to the directory containing `config.yaml`. Every setting can also be supplied as an environment variable by replacing dots and hyphens with underscores, for example:
+`CONFIG_PATH` can point directly to `config.yaml`. For compatibility it may also point to a directory containing `config.yaml`. Every setting can also be supplied as an environment variable by replacing dots and hyphens with underscores, for example:
 
 ```text
+NEKOMONOGATARI_LANGUAGE
 TELEGRAM_TOKEN
 TELEGRAM_ALLOWED_GROUPS
 DATABASE_PATH
@@ -33,7 +34,9 @@ PLUGINS_SYSTEM_STATUS_SHOW_HOSTNAME
 PLUGINS_SYSTEM_STATUS_TIMEOUT
 ```
 
-The global `language` setting accepts `en` or `zh` and controls all plugins, including the Forge registration site.
+The global `language` setting accepts `en` or `zh` and controls both plugins, including the Forge registration site. Its environment variable is namespaced as `NEKOMONOGATARI_LANGUAGE` so the operating system's locale `LANGUAGE` variable cannot override it.
+
+> > > > > > > 643d3ab (feat(flake): package this project as a nixpkg)
 
 Each plugin has its own `enabled` switch. Disabled plugins do not migrate their schema, register handlers, or start services.
 
@@ -77,6 +80,42 @@ Player names must be 3–16 ASCII letters, digits, or underscores. Bindings are 
 Enable `plugins.system-status` to provide `/status` in allowed groups. The response includes the operating system and kernel, architecture, host uptime, CPU model and topology, CPU utilization, load averages, memory, the configured filesystem usage, virtualization details when available, and the bot's Go runtime.
 
 `disk-path` selects the filesystem to report. `show-hostname` is disabled by default to avoid publishing the server hostname into a group chat. Collection is bounded by `timeout`; individual unavailable metrics are omitted while the remaining status is still returned. Network addresses, environment variables, process arguments, and secrets are never included.
+
+## Nix package and NixOS service
+
+The flake exports `packages.<system>.default`, an overlay, and `nixosModules.default`. Build the package with:
+
+```bash
+nix build
+```
+
+A NixOS configuration can enable the hardened systemd service as follows:
+
+```nix
+{
+  inputs.nekomonogatari-bot.url = "git+https://forge.asnk.io/sugar/nekomonogatari-bot.git";
+
+  outputs = inputs@{ nixpkgs, nekomonogatari-bot, ... }: {
+    nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
+      modules = [
+        nekomonogatari-bot.nixosModules.default
+        {
+          services.nekomonogatari-bot = {
+            enable = true;
+            # Keep secrets out of the Nix store. The service user must be able
+            # to read this file (for example via sops-nix owner/group options).
+            configPath = "/run/secrets/nekomonogatari-bot.yaml";
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+Relative database paths are stored under `/var/lib/nekomonogatari-bot`. The service runs as the dedicated `nekomonogatari-bot` user. Do not set `configPath = ./config.yaml` when it contains secrets, because a Nix path literal is copied to the world-readable Nix store.
+
+The Forgejo workflow in [`.forgejo/workflows/nix.yaml`](.forgejo/workflows/nix.yaml) expects a `CACHIX_CACHE_NAME` repository variable and `CACHIX_AUTH_TOKEN` repository secret.
 
 ## Development checks
 

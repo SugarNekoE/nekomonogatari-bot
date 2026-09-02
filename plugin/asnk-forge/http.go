@@ -27,7 +27,7 @@ var webFiles embed.FS
 
 var forgejoUsernamePattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,38}[A-Za-z0-9])?$`)
 
-var errForgejoRecoveryMismatch = errors.New("Forgejo user does not match pending registration")
+var errForgejoRecoveryMismatch = errors.New("forgejo user does not match pending registration")
 
 type apiError struct {
 	Error string `json:"error"`
@@ -320,7 +320,7 @@ func validRegistration(input forgejoCreateUser) bool {
 }
 
 func (p *implementation) validOrigin(r *http.Request) bool {
-	return r.Header.Get("Origin") == p.origin
+	return strings.EqualFold(r.Header.Get("Origin"), p.origin)
 }
 
 func (p *implementation) cookieName() string {
@@ -387,7 +387,7 @@ func (p *implementation) lookupIndeterminate(ctx context.Context, registration i
 		return forgejoUser{}, err
 	}
 	if strings.TrimSpace(user.Email) == "" {
-		return forgejoUser{}, errors.New("Forgejo lookup did not return an email")
+		return forgejoUser{}, errors.New("forgejo lookup did not return an email")
 	}
 	actualHash := digestEmail(user.Email)
 	if !strings.EqualFold(user.Username, registration.RequestedUsername) || len(registration.RequestedEmailHash) != len(actualHash) || subtle.ConstantTimeCompare(registration.RequestedEmailHash, actualHash) != 1 {

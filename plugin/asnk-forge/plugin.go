@@ -59,7 +59,7 @@ func newImplementation(ctx context.Context, language config.Language, telegram c
 		return nil, errors.New("plugin durations must be positive")
 	}
 	if strings.TrimSpace(telegram.Token) == "" || strings.TrimSpace(telegram.Username) == "" {
-		return nil, errors.New("Telegram token and username are required")
+		return nil, errors.New("telegram token and username are required")
 	}
 	client, err := newHTTPForgejoClient(cfg.ForgejoURL, cfg.ForgejoAPIToken, cfg.HTTPTimeout)
 	if err != nil {
@@ -92,7 +92,7 @@ func newImplementation(ctx context.Context, language config.Language, telegram c
 
 func (p *implementation) register(b *bot.Bot) error {
 	if b == nil {
-		return errors.New("Telegram bot is required")
+		return errors.New("telegram bot is required")
 	}
 	p.botMu.Lock()
 	p.telegramBot = b

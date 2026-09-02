@@ -44,7 +44,9 @@ plugins:
 	if err := os.WriteFile(configFile, []byte(contents), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("CONFIG_PATH", dir)
+	t.Setenv("CONFIG_PATH", configFile)
+	// A locale LANGUAGE variable must not override the bot's language.
+	t.Setenv("LANGUAGE", "en_US.UTF-8")
 
 	got, err := Load()
 	if err != nil {
@@ -69,6 +71,8 @@ plugins:
 
 func TestLoadEnvironmentOnly(t *testing.T) {
 	t.Setenv("CONFIG_PATH", t.TempDir())
+	t.Setenv("LANGUAGE", "en_US.UTF-8")
+	t.Setenv("NEKOMONOGATARI_LANGUAGE", "zh")
 	t.Setenv("TELEGRAM_TOKEN", "123456:env-token")
 	t.Setenv("TELEGRAM_ALLOWED_GROUPS", "-1001,-1002")
 	t.Setenv("DATABASE_PATH", "env.db")
@@ -77,11 +81,21 @@ func TestLoadEnvironmentOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
+	if got.Language != LanguageChinese {
+		t.Errorf("Language = %q", got.Language)
+	}
 	if got.Telegram.Token != "123456:env-token" {
 		t.Errorf("Telegram.Token = %q", got.Telegram.Token)
 	}
 	if len(got.Telegram.AllowedGroups) != 2 {
 		t.Errorf("AllowedGroups = %v", got.Telegram.AllowedGroups)
+	}
+}
+
+func TestLoadMissingExplicitConfigFile(t *testing.T) {
+	t.Setenv("CONFIG_PATH", filepath.Join(t.TempDir(), "missing.yaml"))
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "read config") {
+		t.Fatalf("Load() error = %v, want missing config error", err)
 	}
 }
 
