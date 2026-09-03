@@ -2,11 +2,15 @@ name: Nix
 
 on:
   push:
-  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   flake:
     runs-on: nixos-latest
+    env:
+      NIX_CONFIG: "experimental-features = nix-command flakes"
     steps:
       - name: Install Node.js action runtime
         shell: sh
