@@ -8,27 +8,21 @@ jobs:
   flake:
     runs-on: nixos-latest
     steps:
-      - name: Install Node.js 24
+      - name: Install Node.js action runtime
+        shell: sh
         run: |
-          nix profile install nixpkgs#nodejs_24
-          echo "$HOME/.nix-profile/bin" >> "$GITHUB_PATH"
+          set -eu
+          node_path="$(nix build --no-link --print-out-paths nixpkgs#nodejs_24)"
+          echo "$node_path/bin" >> "$FORGEJO_PATH"
 
       - name: Check out repository
         uses: actions/checkout@v6
 
       - name: Validate Cachix configuration
         env:
-          CACHIX_CACHE_NAME: ${{ vars.CACHIX_CACHE_NAME }}
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         run: |
-          test -n "$CACHIX_CACHE_NAME" || { echo "CACHIX_CACHE_NAME repository variable is required" >&2; exit 1; }
           test -n "$CACHIX_AUTH_TOKEN" || { echo "CACHIX_AUTH_TOKEN repository secret is required" >&2; exit 1; }
-
-      - name: Configure Cachix
-        uses: cachix/cachix-action@v16
-        with:
-          name: ${{ vars.CACHIX_CACHE_NAME }}
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Check flake
         run: nix flake check --print-build-logs
@@ -38,5 +32,9 @@ jobs:
 
       - name: Upload package to Cachix
         env:
-          CACHIX_CACHE_NAME: ${{ vars.CACHIX_CACHE_NAME }}
-        run: cachix push "$CACHIX_CACHE_NAME" "$(readlink -f result)"
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cachix_path="$(nix build --inputs-from . --no-link --print-out-paths nixpkgs#cachix)"
+          "$cachix_path/bin/cachix" push nekomonogatari-bot "$(readlink -f result)"
