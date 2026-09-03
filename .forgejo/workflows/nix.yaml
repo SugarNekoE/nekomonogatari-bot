@@ -6,10 +6,8 @@ on:
 
 jobs:
   flake:
-    runs-on: nixos:latest
+    runs-on: nixos-latest
     steps:
-      # JavaScript actions execute inside the NixOS runner environment. The
-      # image intentionally has no Node.js, so install it before any `uses` step.
       - name: Install Node.js 24
         run: |
           nix profile install nixpkgs#nodejs_24
