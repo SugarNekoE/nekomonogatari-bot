@@ -13,6 +13,7 @@ import (
 	"forge.asnk.io/sugar/nekomonogatari-bot/data"
 	"forge.asnk.io/sugar/nekomonogatari-bot/plugin"
 	asnkforge "forge.asnk.io/sugar/nekomonogatari-bot/plugin/asnk-forge"
+	mcstatus "forge.asnk.io/sugar/nekomonogatari-bot/plugin/mc-status"
 	mcwhitelist "forge.asnk.io/sugar/nekomonogatari-bot/plugin/mc-whitelist"
 	systemstatus "forge.asnk.io/sugar/nekomonogatari-bot/plugin/system-status"
 	"github.com/go-telegram/bot"
@@ -70,6 +71,15 @@ func run() error {
 			return fmt.Errorf("initialize mc-whitelist: %w", err)
 		}
 		if err := registry.Add("mc-whitelist", minecraftCallbacks); err != nil {
+			return err
+		}
+	}
+	if cfg.Plugins.MCStatus.Enabled {
+		callbacks, err := mcstatus.New(cfg.Language, cfg.Telegram, cfg.Plugins.MCStatus)
+		if err != nil {
+			return fmt.Errorf("initialize mc-status: %w", err)
+		}
+		if err := registry.Add("mc-status", callbacks); err != nil {
 			return err
 		}
 	}

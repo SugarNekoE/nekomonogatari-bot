@@ -28,6 +28,12 @@ plugins:
     password: CHANGE_ME
     timeout: 5s
 
+  mc-status:
+    enabled: false
+    name: My Minecraft Server
+    address: play.example.com
+    timeout: 5s
+
   system-status:
     enabled: false
     disk-path: /

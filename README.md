@@ -1,9 +1,10 @@
 # nekomonogatari-bot
 
-A small, plugin-based Telegram group bot with three optional integrations:
+A small, plugin-based Telegram group bot with four optional integrations:
 
 - `asnk-forge`: authorizes a Telegram group member in a short-lived web flow and creates that member's Forgejo account through the administrator API.
 - `mc-whitelist`: lets each Telegram account manage up to two Minecraft Java Edition whitelist names through RCON.
+- `mc-status`: queries Minecraft Java Edition server status, including the MOTD and player counts, with DNS SRV support.
 - `system-status`: reports the bot host's operating system, hardware, utilization, load, storage, virtualization, and Go runtime.
 
 The bot uses GORM with the pure-Go `github.com/glebarez/sqlite` dialector, so it builds with `CGO_ENABLED=0`. Plugins that persist data share one database connection while owning their quoted, plugin-prefixed tables (for example, `"mc-whitelist_players"`).
@@ -28,13 +29,17 @@ PLUGINS_ASNK_FORGE_ENABLED
 PLUGINS_ASNK_FORGE_FORGEJO_API_TOKEN
 PLUGINS_MC_WHITELIST_ENABLED
 PLUGINS_MC_WHITELIST_PASSWORD
+PLUGINS_MC_STATUS_ENABLED
+PLUGINS_MC_STATUS_NAME
+PLUGINS_MC_STATUS_ADDRESS
+PLUGINS_MC_STATUS_TIMEOUT
 PLUGINS_SYSTEM_STATUS_ENABLED
 PLUGINS_SYSTEM_STATUS_DISK_PATH
 PLUGINS_SYSTEM_STATUS_SHOW_HOSTNAME
 PLUGINS_SYSTEM_STATUS_TIMEOUT
 ```
 
-The global `language` setting accepts `en` or `zh` and controls both plugins, including the Forge registration site. Its environment variable is namespaced as `NEKOMONOGATARI_LANGUAGE` so the operating system's locale `LANGUAGE` variable cannot override it.
+The global `language` setting accepts `en` or `zh` and controls all plugins, including the Forge registration site. Its environment variable is namespaced as `NEKOMONOGATARI_LANGUAGE` so the operating system's locale `LANGUAGE` variable cannot override it.
 
 > > > > > > > 643d3ab (feat(flake): package this project as a nixpkg)
 
@@ -74,6 +79,25 @@ Available commands in an allowed group:
 ```
 
 Player names must be 3–16 ASCII letters, digits, or underscores. Bindings are keyed by immutable Telegram numeric account ID, compared case-insensitively, and limited to two by SQLite as well as application checks.
+
+## Minecraft status
+
+Enable `plugins.mc-status` and configure the default Java Edition server:
+
+```yaml
+plugins:
+  mc-status:
+    enabled: true
+    name: My Minecraft Server
+    address: play.example.com
+    timeout: 5s
+```
+
+In an allowed group, `/mc` shows the configured name, MOTD, online/maximum player counts, and server address. `/mc <server_address>` queries another server and uses that address as its display name. Commands addressed to the bot, such as `/mc@NekoRegisterBot play.example.com`, also work.
+
+Addresses accept hostnames, IPv4, and IPv6 (`[2001:db8::1]:25565` when specifying a port). Hostnames without a port use `_minecraft._tcp` DNS SRV records, falling back to port `25565` if no record exists. An explicit port bypasses SRV lookup. The reply keeps the supplied address so players can use it to connect.
+
+Queries use the Java Edition server-list status protocol (1.7+); enable `enable-status=true` in the server's `server.properties`. RCON and external status APIs are not needed. The timeout covers DNS, connection, and response reads. Unreachable servers produce an unavailable message. MOTDs preserve text and line breaks while removing Minecraft colors/styles; long MOTDs are truncated to fit Telegram. Missing player counts appear as unknown. Bedrock and legacy pre-1.7 pings are not supported.
 
 ## System status
 

@@ -82,6 +82,10 @@ func bindEnvironment(v *viper.Viper) error {
 		"plugins.mc-whitelist.address",
 		"plugins.mc-whitelist.password",
 		"plugins.mc-whitelist.timeout",
+		"plugins.mc-status.enabled",
+		"plugins.mc-status.name",
+		"plugins.mc-status.address",
+		"plugins.mc-status.timeout",
 		"plugins.system-status.enabled",
 		"plugins.system-status.disk-path",
 		"plugins.system-status.show-hostname",
@@ -126,6 +130,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("plugins.mc-whitelist.password", "")
 	v.SetDefault("plugins.mc-whitelist.timeout", 5*time.Second)
 
+	v.SetDefault("plugins.mc-status.enabled", false)
+	v.SetDefault("plugins.mc-status.name", "Minecraft")
+	v.SetDefault("plugins.mc-status.address", "localhost")
+	v.SetDefault("plugins.mc-status.timeout", 5*time.Second)
+
 	v.SetDefault("plugins.system-status.enabled", false)
 	v.SetDefault("plugins.system-status.disk-path", "/")
 	v.SetDefault("plugins.system-status.show-hostname", false)
@@ -145,7 +154,7 @@ func (c *Config) Validate() error {
 	if hasDuplicates(c.Telegram.AllowedGroups) {
 		return errors.New("telegram.allowed-groups must not contain duplicate chat IDs")
 	}
-	if c.Plugins.AsnkForge.Enabled || c.Plugins.MCWhitelist.Enabled || c.Plugins.SystemStatus.Enabled {
+	if c.Plugins.AsnkForge.Enabled || c.Plugins.MCWhitelist.Enabled || c.Plugins.MCStatus.Enabled || c.Plugins.SystemStatus.Enabled {
 		if !telegramUsernamePattern.MatchString(c.Telegram.Username) {
 			return errors.New("telegram.username must be the bot username without @")
 		}
@@ -167,6 +176,24 @@ func (c *Config) Validate() error {
 		if err := c.validateSystemStatus(); err != nil {
 			return fmt.Errorf("plugins.system-status: %w", err)
 		}
+	}
+	if c.Plugins.MCStatus.Enabled {
+		if err := c.Plugins.MCStatus.Validate(); err != nil {
+			return fmt.Errorf("plugins.mc-status: %w", err)
+		}
+	}
+	return nil
+}
+
+func (p MCStatusConfig) Validate() error {
+	if strings.TrimSpace(p.Name) == "" {
+		return errors.New("name must not be empty")
+	}
+	if strings.TrimSpace(p.Address) == "" {
+		return errors.New("address must not be empty")
+	}
+	if p.Timeout <= 0 {
+		return errors.New("timeout must be greater than zero")
 	}
 	return nil
 }

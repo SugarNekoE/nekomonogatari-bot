@@ -35,6 +35,11 @@ plugins:
     address: 127.0.0.1:25575
     password: rcon-secret
     timeout: 2s
+  mc-status:
+    enabled: true
+    name: Our Server
+    address: play.example.test
+    timeout: 4s
   system-status:
     enabled: true
     disk-path: /srv
@@ -63,6 +68,9 @@ plugins:
 	}
 	if got.Plugins.MCWhitelist.Timeout != 2*time.Second {
 		t.Errorf("MC timeout = %s", got.Plugins.MCWhitelist.Timeout)
+	}
+	if got.Plugins.MCStatus.Name != "Our Server" || got.Plugins.MCStatus.Address != "play.example.test" || got.Plugins.MCStatus.Timeout != 4*time.Second || !got.Plugins.MCStatus.Enabled {
+		t.Errorf("MC status config = %#v", got.Plugins.MCStatus)
 	}
 	if got.Plugins.SystemStatus.DiskPath != "/srv" || !got.Plugins.SystemStatus.ShowHostname || got.Plugins.SystemStatus.Timeout != 1500*time.Millisecond {
 		t.Errorf("System status config = %#v", got.Plugins.SystemStatus)
@@ -170,5 +178,35 @@ func TestValidateSystemStatus(t *testing.T) {
 	cfg.Plugins.SystemStatus.Timeout = 499 * time.Millisecond
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "500ms") {
 		t.Fatalf("short timeout error = %v", err)
+	}
+}
+
+func TestMCStatusEnvironmentAndValidation(t *testing.T) {
+	t.Setenv("CONFIG_PATH", t.TempDir())
+	t.Setenv("TELEGRAM_TOKEN", "123456:env-token")
+	t.Setenv("TELEGRAM_USERNAME", "NekoBot")
+	t.Setenv("PLUGINS_MC_STATUS_ENABLED", "true")
+	t.Setenv("PLUGINS_MC_STATUS_NAME", "Environment Server")
+	t.Setenv("PLUGINS_MC_STATUS_ADDRESS", "play.example.test:25566")
+	t.Setenv("PLUGINS_MC_STATUS_TIMEOUT", "2s")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Plugins.MCStatus; !got.Enabled || got.Name != "Environment Server" || got.Address != "play.example.test:25566" || got.Timeout != 2*time.Second {
+		t.Fatalf("environment config = %#v", got)
+	}
+	for _, test := range []struct{ key, value, want string }{
+		{"PLUGINS_MC_STATUS_NAME", " ", "name"},
+		{"PLUGINS_MC_STATUS_ADDRESS", " ", "address"},
+		{"PLUGINS_MC_STATUS_TIMEOUT", "0s", "timeout"},
+		{"TELEGRAM_USERNAME", "", "telegram.username"},
+	} {
+		t.Run(test.key, func(t *testing.T) {
+			t.Setenv(test.key, test.value)
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Load error = %v, want %s", err, test.want)
+			}
+		})
 	}
 }
