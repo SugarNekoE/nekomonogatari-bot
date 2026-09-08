@@ -8,7 +8,7 @@ on:
 
 jobs:
   flake:
-    runs-on: nixos-latest
+    runs-on: acs-nix
     env:
       NIX_CONFIG: "experimental-features = nix-command flakes"
     steps:
