@@ -31,6 +31,11 @@ buildGoModule {
   env.CGO_ENABLED = "0";
   subPackages = [ "." ];
 
+  preBuild = ''
+    export XDG_CONFIG_HOME="$TMPDIR/config"
+    export XDG_CACHE_HOME="$TMPDIR/cache"
+  '';
+
   checkPhase = ''
     runHook preCheck
     go test ./...
