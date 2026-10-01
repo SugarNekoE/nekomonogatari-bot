@@ -1,14 +1,12 @@
 name: Nix
-
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
 jobs:
   flake:
-    runs-on: acs-nix
+    runs-on: nixos-latest
     env:
       NIX_CONFIG: "experimental-features = nix-command flakes"
     steps:
@@ -18,22 +16,17 @@ jobs:
           set -eu
           node_path="$(nix build --no-link --print-out-paths nixpkgs#nodejs_24)"
           echo "$node_path/bin" >> "$FORGEJO_PATH"
-
       - name: Check out repository
         uses: actions/checkout@v6
-
       - name: Validate Cachix configuration
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         run: |
           test -n "$CACHIX_AUTH_TOKEN" || { echo "CACHIX_AUTH_TOKEN repository secret is required" >&2; exit 1; }
-
       - name: Check flake
         run: nix flake check --print-build-logs
-
       - name: Build package
         run: nix build .#default --print-build-logs
-
       - name: Upload package to Cachix
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
